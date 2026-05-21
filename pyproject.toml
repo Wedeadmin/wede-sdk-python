@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "wede-sdk"
+version = "0.1.0"
+description = "Official Python SDK for the Wede Technology platform"
+requires-python = ">=3.8"
+dependencies = []
+
+[project.urls]
+Homepage = "https://wede.pt"
+Repository = "https://github.com/Wedeadmin/wede-sdk-python"
+Documentation = "https://docs.wede.pt"
