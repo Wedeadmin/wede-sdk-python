@@ -132,6 +132,58 @@ class WedeClient:
     def delete_webhook(self, webhook_id: str) -> None:
         self._request("DELETE", f"/v1/webhooks/{webhook_id}")
 
+
+    # Teams
+    def list_teams(self, tenant_id: str = None) -> dict:
+        qs = f"?tenant_id={tenant_id}" if tenant_id else ""
+        return self._request("GET", f"/v1/teams{qs}")
+
+    def get_team(self, team_id: str) -> dict:
+        return self._request("GET", f"/v1/teams/{team_id}")
+
+    def update_member_location(self, team_id: str, member_id: str, lat: float, lng: float) -> dict:
+        return self._request("PATCH", f"/v1/teams/{team_id}/members/{member_id}/location", {
+            "lat": lat, "lng": lng
+        })
+
+    # Dispatch
+    def score_teams(self, lat: float, lng: float, vertical: str = None,
+                    priority: str = None, required_equipment: list = None) -> dict:
+        body = {"lat": lat, "lng": lng}
+        if vertical: body["vertical"] = vertical
+        if priority: body["priority"] = priority
+        if required_equipment: body["required_equipment"] = required_equipment
+        return self._request("POST", "/v1/teams/dispatch/score", body)
+
+    def dispatch(self, event_id: str, team_id: str, notes: str = None,
+                 event_lat: float = None, event_lng: float = None) -> dict:
+        body = {"event_id": event_id, "team_id": team_id}
+        if notes: body["notes"] = notes
+        if event_lat is not None: body["event_lat"] = event_lat
+        if event_lng is not None: body["event_lng"] = event_lng
+        return self._request("POST", "/v1/teams/dispatch", body)
+
+    # Missions
+    def list_missions(self, team_id: str = None, status: str = None, limit: int = None) -> dict:
+        params = {}
+        if team_id: params["team_id"] = team_id
+        if status: params["status"] = status
+        if limit: params["limit"] = str(limit)
+        qs = ("?" + "&".join(f"{k}={v}" for k, v in params.items())) if params else ""
+        return self._request("GET", f"/v1/missions{qs}")
+
+    def get_mission(self, mission_id: str) -> dict:
+        return self._request("GET", f"/v1/missions/{mission_id}")
+
+    def update_mission_status(self, mission_id: str, status: str, feedback: dict = None) -> dict:
+        body = {"status": status}
+        if feedback: body["feedback"] = feedback
+        return self._request("PATCH", f"/v1/missions/{mission_id}/status", body)
+
+    # Billing
+    def get_billing(self) -> dict:
+        return self._request("GET", "/v1/tenant/billing")
+
     # Tenant
     def get_tenant_info(self) -> Dict[str, Any]:
         return self._request("GET", "/v1/tenant/me")
