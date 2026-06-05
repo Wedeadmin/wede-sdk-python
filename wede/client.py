@@ -180,6 +180,19 @@ class WedeClient:
         if feedback: body["feedback"] = feedback
         return self._request("PATCH", f"/v1/missions/{mission_id}/status", body)
 
+    # Catalog
+    def list_catalog_actions(self, vertical: str = None) -> dict:
+        qs = f'?vertical={vertical}' if vertical else ''
+        return self._request('GET', f'/v1/catalog/actions{qs}')
+
+    def create_catalog_action(self, vertical: str, code: str, name: str, description: str = None) -> dict:
+        body = {'vertical': vertical, 'code': code, 'name': name}
+        if description: body['description'] = description
+        return self._request('POST', '/v1/catalog/actions', body)
+
+    def delete_catalog_action(self, action_id: str) -> None:
+        return self._request('DELETE', f'/v1/catalog/actions/{action_id}')
+
     # Billing
     def get_billing(self) -> dict:
         return self._request("GET", "/v1/tenant/billing")
