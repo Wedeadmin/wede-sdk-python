@@ -13,3 +13,7 @@ __all__ = [
     "WedeParserField",
 ]
 __version__ = "0.1.0"
+
+from .score_engine import score_teams, haversine_km, point_in_polygon, TeamInput, EventInput, ScoredTeam, GeoPoint
+from .cache import WedeCache, DictStorage
+from .offline_dispatch import WedeOfflineDispatch, WedeDeviceId, OfflineDispatchRequest, DispatchOfflineResult

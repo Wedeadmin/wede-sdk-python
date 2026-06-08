@@ -3,6 +3,8 @@ import time
 import urllib.request
 import urllib.error
 from typing import Any, Dict, List, Optional
+from .offline_dispatch import WedeOfflineDispatch, WedeDeviceId
+from .cache import WedeCache
 from .errors import WedeAuthError, WedeError, WedeNetworkError
 from .types import WedeEvent, WedeSyncBatch, WedeParserField
 
@@ -18,6 +20,7 @@ class WedeClient:
         base_url: str = DEFAULT_BASE_URL,
         timeout: int = DEFAULT_TIMEOUT,
         retries: int = DEFAULT_RETRIES,
+        storage=None,
     ):
         if not api_key:
             raise WedeAuthError("API key is required")
@@ -25,6 +28,9 @@ class WedeClient:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
         self._retries = retries
+        self.offline = WedeOfflineDispatch(storage) if storage else None
+        self.cache = WedeCache(storage) if storage else None
+        self._device_id = WedeDeviceId(storage) if storage else None
 
     def _request(self, method: str, path: str, body: Any = None, attempt: int = 1) -> Any:
         url = self._base_url + path
@@ -203,3 +209,45 @@ class WedeClient:
 
     def get_usage(self, from_date: str, to_date: str) -> Dict[str, Any]:
         return self._request("GET", f"/v1/tenant/usage?from={from_date}&to={to_date}")
+
+    # Device & Offline Sync
+
+    def register_device(self, platform: str = "other", app_version: str = None) -> dict:
+        if not self._device_id:
+            raise ValueError("Storage required for device registration")
+        device_id = self._device_id.get_or_create()
+        body = {"device_id": device_id, "platform": platform}
+        if app_version:
+            body["app_version"] = app_version
+        return self._request("POST", "/v1/devices/register", body)
+
+    def sync_device_queue(self) -> dict:
+        if not self.offline or not self._device_id:
+            return {}
+        device_id = self._device_id.get()
+        if not device_id:
+            return {}
+        pending = self.offline.get_pending_queue()
+        dispatches = [{
+            "sequence_number": d.sequence_number,
+            "action_id": d.action_id,
+            "event_lat": d.event.get("lat"),
+            "event_lng": d.event.get("lng"),
+            "vertical": d.event.get("vertical"),
+            "priority": d.event.get("priority"),
+            "created_offline_at": d.queued_at,
+        } for d in pending]
+        body = {"device_id": device_id, "last_received_seq": 0, "dispatches": dispatches}
+        result = self._request("POST", "/v1/devices/sync", body)
+        for seq in result.get("accepted", []):
+            entry = next((d for d in pending if d.sequence_number == seq), None)
+            if entry:
+                self.offline.mark_synced(entry.id)
+        self.offline.clear_synced()
+        return result
+
+    def refresh_cache(self) -> None:
+        if not self.cache:
+            return
+        teams_res = self._request("GET", "/v1/teams")
+        self.cache.set_teams(teams_res.get("data", []))
