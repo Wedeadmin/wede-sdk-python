@@ -251,3 +251,26 @@ class WedeClient:
             return
         teams_res = self._request("GET", "/v1/teams")
         self.cache.set_teams(teams_res.get("data", []))
+
+    def request_backup(self, mission_id: str, event_id: str, event_lat: float = None, event_lng: float = None) -> dict:
+        """Request a backup team for an active mission."""
+        body = {
+            "event_id": event_id,
+            "notes": f"Backup requested by field operator for mission {mission_id}",
+        }
+        if event_lat is not None:
+            body["event_lat"] = event_lat
+        if event_lng is not None:
+            body["event_lng"] = event_lng
+        return self._request("POST", "/v1/teams/dispatch", body)
+
+    def update_dispatch_settings(self, dispatch_mode: bool = None, dispatch_threshold: float = None, reinforcement_timeout_min: int = None) -> dict:
+        """Update tenant dispatch settings including reinforcement timeout."""
+        body = {}
+        if dispatch_mode is not None:
+            body["dispatch_mode"] = dispatch_mode
+        if dispatch_threshold is not None:
+            body["dispatch_threshold"] = dispatch_threshold
+        if reinforcement_timeout_min is not None:
+            body["reinforcement_timeout_min"] = reinforcement_timeout_min
+        return self._request("PATCH", "/v1/tenant/dispatch-settings", body)
